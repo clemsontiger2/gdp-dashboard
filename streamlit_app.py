@@ -24,12 +24,12 @@ st.markdown(
 [data-testid="stMetricValue"] { font-size: 1.6rem; font-weight: 700; }
 [data-testid="stMetricDelta"]  { font-size: 0.85rem; }
 [data-testid="stMetric"] {
-    background-color: #f8f9fa; border: 1px solid #e9ecef;
+    background-color: var(--secondary-background-color);
+    border: 1px solid rgba(128, 128, 128, 0.25);
     border-radius: 8px; padding: 12px 16px;
 }
 .stTabs [data-baseweb="tab-list"] { gap: 8px; }
 .stTabs [data-baseweb="tab"]      { padding: 8px 16px; font-weight: 600; }
-[data-testid="stSidebar"] { background-color: #f0f4f8; }
 div.block-container { padding-top: 1.5rem; }
 </style>
 """,
