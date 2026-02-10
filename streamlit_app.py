@@ -4,6 +4,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import math
+from datetime import date
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -111,7 +112,7 @@ def get_fed_data():
         2008: 1.9, 2009: 0.2, 2010: 0.2, 2011: 0.1, 2012: 0.1,
         2013: 0.1, 2014: 0.1, 2015: 0.1, 2016: 0.4, 2017: 1.0,
         2018: 1.8, 2019: 2.2, 2020: 0.4, 2021: 0.1, 2022: 1.7,
-        2023: 5.3, 2024: 5.3,
+        2023: 5.3, 2024: 4.6, 2025: 4.4, 2026: 3.9,
     }
     unemployment = {
         1960: 5.5, 1962: 5.5, 1964: 5.2, 1966: 3.8, 1968: 3.6,
@@ -125,7 +126,7 @@ def get_fed_data():
         2008: 5.8, 2009: 9.3, 2010: 9.6, 2011: 8.9, 2012: 8.1,
         2013: 7.4, 2014: 6.2, 2015: 5.3, 2016: 4.9, 2017: 4.4,
         2018: 3.9, 2019: 3.7, 2020: 8.1, 2021: 5.4, 2022: 3.6,
-        2023: 3.6, 2024: 3.7,
+        2023: 3.6, 2024: 4.0, 2025: 4.2, 2026: 4.1,
     }
     cpi = {
         1960: 29.6, 1962: 30.2, 1964: 31.0, 1966: 32.4, 1968: 34.8,
@@ -135,6 +136,7 @@ def get_fed_data():
         2000: 172.2, 2002: 179.9, 2004: 188.9, 2006: 201.6, 2008: 215.3,
         2010: 218.1, 2012: 229.6, 2014: 236.7, 2016: 240.0, 2018: 251.1,
         2020: 258.8, 2021: 271.0, 2022: 292.7, 2023: 304.7, 2024: 312.3,
+        2025: 320.1, 2026: 327.3,
     }
     treasury_10y = {
         1960: 4.0, 1962: 3.9, 1964: 4.2, 1966: 4.9, 1968: 5.7,
@@ -148,6 +150,7 @@ def get_fed_data():
         2010: 3.2, 2011: 2.8, 2012: 1.8, 2013: 2.4, 2014: 2.5,
         2015: 2.1, 2016: 1.8, 2017: 2.3, 2018: 2.9, 2019: 2.1,
         2020: 0.9, 2021: 1.4, 2022: 3.0, 2023: 4.0, 2024: 4.3,
+        2025: 4.5, 2026: 4.3,
     }
     real_gdp = {
         1960: 3260, 1962: 3580, 1964: 3820, 1966: 4220, 1968: 4550,
@@ -157,7 +160,7 @@ def get_fed_data():
         2000: 12560, 2002: 12820, 2004: 13770, 2006: 14590, 2008: 14830,
         2010: 15050, 2012: 15600, 2014: 16360, 2016: 16920, 2018: 18140,
         2019: 18600, 2020: 17510, 2021: 19100, 2022: 19700, 2023: 20320,
-        2024: 20800,
+        2024: 20800, 2025: 21350, 2026: 21850,
     }
 
     # Build per-series DataFrames
@@ -194,12 +197,15 @@ with st.sidebar:
     st.divider()
 
     st.markdown("### Time Range")
-    from_year, to_year = st.slider(
-        "Select years",
-        min_value=1960,
-        max_value=2024,
-        value=(2000, 2024),
+    from_date, to_date = st.slider(
+        "Select range",
+        min_value=date(1960, 1, 1),
+        max_value=date(2026, 12, 1),
+        value=(date(1960, 1, 1), date(2026, 12, 1)),
+        format="MMM YYYY",
     )
+    from_year = from_date.year
+    to_year = to_date.year
 
     st.divider()
     st.markdown("### Countries (GDP tab)")
@@ -226,9 +232,10 @@ st.caption("World Bank GDP data combined with Federal Reserve economic indicator
 # ---------------------------------------------------------------------------
 # Key metrics bar
 # ---------------------------------------------------------------------------
-latest = fed_df[fed_df["date"] <= f"{to_year}-12-31"].iloc[-1]
-prev = fed_df[fed_df["date"] <= f"{to_year - 1}-12-31"].iloc[-1]
-latest_rgdp = real_gdp_df[real_gdp_df["date"] <= f"{to_year}-12-31"].iloc[-1]
+_to_ts = pd.Timestamp(to_date)
+latest = fed_df[fed_df["date"] <= _to_ts].iloc[-1]
+prev = fed_df[fed_df["date"] <= _to_ts - pd.DateOffset(years=1)].iloc[-1]
+latest_rgdp = real_gdp_df[real_gdp_df["date"] <= _to_ts].iloc[-1]
 inflation_val = latest["inflation_rate"] if pd.notna(latest["inflation_rate"]) else 0
 prev_inflation = prev["inflation_rate"] if pd.notna(prev["inflation_rate"]) else 0
 
@@ -256,8 +263,9 @@ tab_fed, tab_gdp, tab_overview = st.tabs(
 
 # ========================== TAB 1 – FED ==========================
 with tab_fed:
+    _from_ts = pd.Timestamp(from_date)
     fed_filt = fed_df[
-        (fed_df["date"] >= f"{from_year}-01-01") & (fed_df["date"] <= f"{to_year}-12-31")
+        (fed_df["date"] >= _from_ts) & (fed_df["date"] <= _to_ts)
     ]
 
     # --- Interest rates ---
@@ -307,7 +315,7 @@ with tab_fed:
     # --- Real GDP ---
     st.subheader("US Real GDP (Chained 2017 Dollars)")
     rgdp_filt = real_gdp_df[
-        (real_gdp_df["date"] >= f"{from_year}-01-01") & (real_gdp_df["date"] <= f"{to_year}-12-31")
+        (real_gdp_df["date"] >= _from_ts) & (real_gdp_df["date"] <= _to_ts)
     ]
     fig_g = go.Figure()
     fig_g.add_trace(go.Scatter(
@@ -376,7 +384,7 @@ with tab_gdp:
 # ========================== TAB 3 – OVERVIEW ==========================
 with tab_overview:
     ov = fed_df[
-        (fed_df["date"] >= f"{from_year}-01-01") & (fed_df["date"] <= f"{to_year}-12-31")
+        (fed_df["date"] >= _from_ts) & (fed_df["date"] <= _to_ts)
     ]
 
     st.subheader("All Indicators")
@@ -416,7 +424,7 @@ with tab_overview:
             f"{inflation_val:.1f}%",
             f"{latest['treasury_10y']:.2f}%",
         ],
-        f"Avg ({from_year}\u2013{to_year})": [
+        f"Avg ({from_date:%b %Y}\u2013{to_date:%b %Y})": [
             f"{ov['fed_funds_rate'].mean():.2f}%",
             f"{ov['unemployment_rate'].mean():.1f}%",
             f"{ov['inflation_rate'].dropna().mean():.1f}%",
@@ -443,6 +451,6 @@ with tab_overview:
 st.divider()
 st.caption(
     "**Data sources:** GDP from [World Bank Open Data](https://data.worldbank.org/) (1960\u20132022) "
-    "| Federal Reserve indicators based on [FRED](https://fred.stlouisfed.org/) historical data "
-    "(FEDFUNDS, UNRATE, CPIAUCSL, DGS10, GDPC1)"
+    "| Federal Reserve indicators based on [FRED](https://fred.stlouisfed.org/) historical data (1960\u20132026) "
+    "(FEDFUNDS, UNRATE, CPIAUCSL, DGS10, GDPC1). 2025\u20132026 values are estimates."
 )
