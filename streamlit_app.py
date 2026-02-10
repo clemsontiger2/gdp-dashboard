@@ -4,6 +4,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import math
+from datetime import date
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -196,12 +197,15 @@ with st.sidebar:
     st.divider()
 
     st.markdown("### Time Range")
-    from_year, to_year = st.slider(
-        "Select years",
-        min_value=1960,
-        max_value=2026,
-        value=(2000, 2026),
+    from_date, to_date = st.slider(
+        "Select range",
+        min_value=date(1960, 1, 1),
+        max_value=date(2026, 12, 1),
+        value=(date(1960, 1, 1), date(2026, 12, 1)),
+        format="MMM YYYY",
     )
+    from_year = from_date.year
+    to_year = to_date.year
 
     st.divider()
     st.markdown("### Countries (GDP tab)")
@@ -228,9 +232,10 @@ st.caption("World Bank GDP data combined with Federal Reserve economic indicator
 # ---------------------------------------------------------------------------
 # Key metrics bar
 # ---------------------------------------------------------------------------
-latest = fed_df[fed_df["date"] <= f"{to_year}-12-31"].iloc[-1]
-prev = fed_df[fed_df["date"] <= f"{to_year - 1}-12-31"].iloc[-1]
-latest_rgdp = real_gdp_df[real_gdp_df["date"] <= f"{to_year}-12-31"].iloc[-1]
+_to_ts = pd.Timestamp(to_date)
+latest = fed_df[fed_df["date"] <= _to_ts].iloc[-1]
+prev = fed_df[fed_df["date"] <= _to_ts - pd.DateOffset(years=1)].iloc[-1]
+latest_rgdp = real_gdp_df[real_gdp_df["date"] <= _to_ts].iloc[-1]
 inflation_val = latest["inflation_rate"] if pd.notna(latest["inflation_rate"]) else 0
 prev_inflation = prev["inflation_rate"] if pd.notna(prev["inflation_rate"]) else 0
 
@@ -258,8 +263,9 @@ tab_fed, tab_gdp, tab_overview = st.tabs(
 
 # ========================== TAB 1 – FED ==========================
 with tab_fed:
+    _from_ts = pd.Timestamp(from_date)
     fed_filt = fed_df[
-        (fed_df["date"] >= f"{from_year}-01-01") & (fed_df["date"] <= f"{to_year}-12-31")
+        (fed_df["date"] >= _from_ts) & (fed_df["date"] <= _to_ts)
     ]
 
     # --- Interest rates ---
@@ -309,7 +315,7 @@ with tab_fed:
     # --- Real GDP ---
     st.subheader("US Real GDP (Chained 2017 Dollars)")
     rgdp_filt = real_gdp_df[
-        (real_gdp_df["date"] >= f"{from_year}-01-01") & (real_gdp_df["date"] <= f"{to_year}-12-31")
+        (real_gdp_df["date"] >= _from_ts) & (real_gdp_df["date"] <= _to_ts)
     ]
     fig_g = go.Figure()
     fig_g.add_trace(go.Scatter(
@@ -378,7 +384,7 @@ with tab_gdp:
 # ========================== TAB 3 – OVERVIEW ==========================
 with tab_overview:
     ov = fed_df[
-        (fed_df["date"] >= f"{from_year}-01-01") & (fed_df["date"] <= f"{to_year}-12-31")
+        (fed_df["date"] >= _from_ts) & (fed_df["date"] <= _to_ts)
     ]
 
     st.subheader("All Indicators")
@@ -418,7 +424,7 @@ with tab_overview:
             f"{inflation_val:.1f}%",
             f"{latest['treasury_10y']:.2f}%",
         ],
-        f"Avg ({from_year}\u2013{to_year})": [
+        f"Avg ({from_date:%b %Y}\u2013{to_date:%b %Y})": [
             f"{ov['fed_funds_rate'].mean():.2f}%",
             f"{ov['unemployment_rate'].mean():.1f}%",
             f"{ov['inflation_rate'].dropna().mean():.1f}%",
